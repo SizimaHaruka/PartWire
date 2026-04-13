@@ -1,0 +1,546 @@
+Project PartWire {
+  database_type: "SQLServer"
+  Note: '''
+  PartWire の初期 ER 図たたき台。
+  dbdiagram.io で閲覧、対話しながら更新することを想定する。
+  品目区分 + 品目ID の多態参照は DBML では厳密 FK を張りにくいため Note で補足している。
+  '''
+}
+
+Enum item_type {
+  purchase_part
+  manufactured_part
+}
+
+Enum auth_type {
+  ad
+  local
+}
+
+Enum approval_status {
+  not_requested
+  requested
+  in_progress
+  approved
+  rejected
+  cancelled
+}
+
+Enum quote_adoption_status {
+  draft
+  candidate
+  adopted
+  not_adopted
+  cancelled
+}
+
+Enum order_status {
+  not_ordered
+  ordered
+  partially_delivered
+  completed
+  cancelled
+}
+
+Enum delivery_status {
+  not_delivered
+  partially_delivered
+  delivered
+  checked
+  difference_found
+}
+
+Enum invoice_status {
+  draft
+  registered
+  forwarded
+  cancelled
+}
+
+Enum route_candidate_type {
+  user
+  ad_group
+}
+
+Enum document_type {
+  quotation
+  delivery_note
+  invoice
+}
+
+Enum attachment_target_type {
+  quote
+  delivery
+  invoice
+  project
+  order
+}
+
+Table construction_projects {
+  id bigint [pk, increment]
+  construction_no varchar(50) [not null, unique]
+  construction_name nvarchar(200) [not null]
+  status varchar(30) [not null]
+  start_date date
+  end_date date
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table departments {
+  id bigint [pk, increment]
+  department_code varchar(50) [not null, unique]
+  department_name nvarchar(200) [not null]
+  is_active bit [not null, default: 1]
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table approval_ranks {
+  id bigint [pk, increment]
+  rank_name nvarchar(100) [not null, unique]
+  description nvarchar(500)
+  display_order int [not null]
+}
+
+Table amount_ranks {
+  id bigint [pk, increment]
+  rank_name nvarchar(100) [not null, unique]
+  min_amount decimal(18,2) [not null]
+  max_amount decimal(18,2)
+  display_order int [not null]
+}
+
+Table users {
+  id bigint [pk, increment]
+  login_id varchar(100) [not null, unique]
+  user_name nvarchar(200) [not null]
+  auth_type auth_type [not null]
+  password_hash varchar(500)
+  department_id bigint [ref: > departments.id]
+  role_code varchar(50) [not null]
+  approval_rank_id bigint [ref: > approval_ranks.id]
+  ad_key varchar(255)
+  is_active bit [not null, default: 1]
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table ad_group_links {
+  id bigint [pk, increment]
+  group_name varchar(255) [not null, unique]
+  purpose_type varchar(50) [not null]
+  department_id bigint [ref: > departments.id]
+  role_code varchar(50)
+  approval_rank_id bigint [ref: > approval_ranks.id]
+  is_active bit [not null, default: 1]
+}
+
+Table system_settings {
+  id bigint [pk, increment]
+  auth_type auth_type [not null]
+  ad_domain varchar(255)
+  ad_group_lookup_enabled bit [not null, default: 0]
+  quotation_forwarding_enabled bit [not null, default: 0]
+  password_policy_json nvarchar(max)
+  updated_at datetime2 [not null]
+}
+
+Table projects {
+  id bigint [pk, increment]
+  project_no varchar(30) [not null, unique, note: '意味を持たない短い自動採番番号']
+  construction_project_id bigint [not null, ref: > construction_projects.id]
+  department_id bigint [ref: > departments.id]
+  project_name nvarchar(200) [not null]
+  requester_user_id bigint [not null, ref: > users.id]
+  arranger_user_id bigint [not null, ref: > users.id]
+  project_status varchar(30) [not null]
+  approval_status approval_status [not null]
+  requested_at date [not null]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table business_partners {
+  id bigint [pk, increment]
+  partner_code varchar(50) [not null, unique]
+  partner_name nvarchar(200) [not null]
+  contact_name nvarchar(100)
+  email varchar(255)
+  phone varchar(50)
+  is_supplier bit [not null, default: 0]
+  is_processor bit [not null, default: 0]
+  requires_invoice_management bit [not null, default: 0]
+  receives_invoice_here bit [not null, default: 0]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table purchase_parts {
+  id bigint [pk, increment]
+  part_code varchar(50) [unique]
+  part_name nvarchar(200)
+  manufacturer_id bigint [not null, ref: > manufacturers.id]
+  model_no nvarchar(200) [not null]
+  unit nvarchar(50)
+  default_business_partner_id bigint [ref: > business_partners.id]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table manufacturers {
+  id bigint [pk, increment]
+  manufacturer_code varchar(50) [unique]
+  manufacturer_name nvarchar(200) [not null, unique]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table manufactured_parts {
+  id bigint [pk, increment]
+  drawing_no nvarchar(100) [not null, unique]
+  item_name nvarchar(200) [not null]
+  material_id bigint [ref: > materials.id]
+  shape_id bigint [ref: > shapes.id]
+  processing_method_id bigint [ref: > processing_methods.id]
+  size_id bigint [ref: > sizes.id]
+  surface_treatment_id bigint [ref: > surface_treatments.id]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table materials {
+  id bigint [pk, increment]
+  material_code varchar(50) [unique]
+  material_name nvarchar(200) [not null, unique]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+}
+
+Table shapes {
+  id bigint [pk, increment]
+  shape_code varchar(50) [unique]
+  shape_name nvarchar(200) [not null, unique]
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+}
+
+Table processing_methods {
+  id bigint [pk, increment]
+  processing_method_code varchar(50) [unique]
+  processing_method_name nvarchar(200) [not null, unique, note: '放電、旋盤、フライス盤、マシニング、6軸、3Dプリンタ、研削 などを想定']
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+}
+
+Table sizes {
+  id bigint [pk, increment]
+  size_code varchar(50) [unique]
+  size_name nvarchar(200) [not null, unique, note: '300mmまで、1000mmまで などのサイズ帯を想定']
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+}
+
+Table surface_treatments {
+  id bigint [pk, increment]
+  surface_treatment_code varchar(50) [unique]
+  surface_treatment_name nvarchar(200) [not null, unique, note: 'アルマイト、無電解ニッケル等のめっきを想定']
+  is_active bit [not null, default: 1]
+  note nvarchar(1000)
+}
+
+Table manufactured_part_attributes {
+  id bigint [pk, increment]
+  manufactured_part_id bigint [not null, ref: > manufactured_parts.id]
+  attribute_name nvarchar(100) [not null]
+  attribute_value nvarchar(500)
+  display_order int [not null, default: 0]
+  is_filter_target bit [not null, default: 0]
+}
+
+Table business_partner_materials {
+  id bigint [pk, increment]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  material_id bigint [not null, ref: > materials.id]
+  priority int [not null, default: 0]
+  is_active bit [not null, default: 1]
+
+  Indexes {
+    (business_partner_id, material_id) [unique]
+  }
+}
+
+Table business_partner_shapes {
+  id bigint [pk, increment]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  shape_id bigint [not null, ref: > shapes.id]
+  priority int [not null, default: 0]
+  is_active bit [not null, default: 1]
+
+  Indexes {
+    (business_partner_id, shape_id) [unique]
+  }
+}
+
+Table business_partner_processing_methods {
+  id bigint [pk, increment]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  processing_method_id bigint [not null, ref: > processing_methods.id]
+  priority int [not null, default: 0]
+  is_active bit [not null, default: 1]
+
+  Indexes {
+    (business_partner_id, processing_method_id) [unique]
+  }
+}
+
+Table business_partner_sizes {
+  id bigint [pk, increment]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  size_id bigint [not null, ref: > sizes.id]
+  priority int [not null, default: 0]
+  is_active bit [not null, default: 1]
+
+  Indexes {
+    (business_partner_id, size_id) [unique]
+  }
+}
+
+Table business_partner_surface_treatments {
+  id bigint [pk, increment]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  surface_treatment_id bigint [not null, ref: > surface_treatments.id]
+  priority int [not null, default: 0]
+  is_active bit [not null, default: 1]
+
+  Indexes {
+    (business_partner_id, surface_treatment_id) [unique]
+  }
+}
+
+Table project_items {
+  id bigint [pk, increment]
+  project_id bigint [not null, ref: > projects.id]
+  item_type item_type [not null]
+  item_id bigint [not null, note: 'item_type=purchase_part のとき purchase_parts.id、manufactured_part のとき manufactured_parts.id']
+  requested_qty decimal(18,4) [not null]
+  unit nvarchar(50)
+  usage_text nvarchar(200)
+  requested_due_date date
+  line_status varchar(30) [not null]
+  adopted_quote_line_id bigint
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+
+  Indexes {
+    (project_id, item_type, item_id) [unique]
+  }
+}
+
+Table price_histories {
+  id bigint [pk, increment]
+  item_type item_type [not null]
+  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  price_category varchar(50) [not null]
+  unit_price decimal(18,4) [not null]
+  currency_code varchar(10) [not null, default: 'JPY']
+  effective_from date [not null]
+  supplier_quote_no nvarchar(100)
+  order_no nvarchar(100)
+  source_type varchar(50) [not null]
+  adopted_flag bit [not null, default: 0]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+}
+
+Table quote_requests {
+  id bigint [pk, increment]
+  project_item_id bigint [not null, ref: > project_items.id]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  requested_on date [not null]
+  response_due_on date
+  request_method varchar(50)
+  status varchar(30) [not null]
+  note nvarchar(1000)
+}
+
+Table quotations {
+  id bigint [pk, increment]
+  project_id bigint [not null, ref: > projects.id]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  internal_quote_no varchar(50) [not null, unique]
+  supplier_quote_no nvarchar(100)
+  quote_date date [not null]
+  valid_until date
+  total_amount decimal(18,2) [not null]
+  approval_status approval_status [not null]
+  adoption_status quote_adoption_status [not null]
+  revision_no int [not null, default: 1]
+  root_quotation_id bigint [ref: > quotations.id]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table quotation_lines {
+  id bigint [pk, increment]
+  quotation_id bigint [not null, ref: > quotations.id]
+  project_item_id bigint [not null, ref: > project_items.id]
+  item_type item_type [not null]
+  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  quoted_qty decimal(18,4) [not null]
+  quoted_unit_price decimal(18,4) [not null]
+  quoted_amount decimal(18,2) [not null]
+  is_adopted bit [not null, default: 0]
+  is_ordered bit [not null, default: 0]
+  delivered_qty decimal(18,4) [not null, default: 0]
+  checked_qty decimal(18,4) [not null, default: 0]
+  invoiced_qty decimal(18,4) [not null, default: 0]
+  is_completed bit [not null, default: 0]
+  note nvarchar(1000)
+}
+
+Ref: project_items.adopted_quote_line_id > quotation_lines.id
+
+Table purchase_approvals {
+  id bigint [pk, increment]
+  quotation_id bigint [not null, ref: > quotations.id]
+  department_id bigint [not null, ref: > departments.id]
+  amount_rank_id bigint [not null, ref: > amount_ranks.id]
+  required_approval_rank_id bigint [not null, ref: > approval_ranks.id]
+  requested_by_user_id bigint [not null, ref: > users.id]
+  approved_by_user_id bigint [ref: > users.id]
+  requested_on datetime2 [not null]
+  approved_on datetime2
+  approval_status approval_status [not null]
+  comment nvarchar(1000)
+}
+
+Table approval_route_definitions {
+  id bigint [pk, increment]
+  department_id bigint [not null, ref: > departments.id]
+  amount_rank_id bigint [not null, ref: > amount_ranks.id]
+  step_no int [not null]
+  required_approval_rank_id bigint [not null, ref: > approval_ranks.id]
+  candidate_type route_candidate_type [not null]
+  candidate_user_id bigint [ref: > users.id]
+  candidate_ad_group_id bigint [ref: > ad_group_links.id]
+  is_active bit [not null, default: 1]
+}
+
+Table orders {
+  id bigint [pk, increment]
+  quotation_id bigint [not null, ref: > quotations.id]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  order_no varchar(50) [not null, unique]
+  ordered_on date [not null]
+  total_amount decimal(18,2) [not null]
+  planned_delivery_date date
+  order_status order_status [not null]
+  cancelled_on date
+  cancel_reason nvarchar(500)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table order_lines {
+  id bigint [pk, increment]
+  order_id bigint [not null, ref: > orders.id]
+  quotation_line_id bigint [not null, ref: > quotation_lines.id]
+  item_type item_type [not null]
+  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  ordered_qty decimal(18,4) [not null]
+  unit_price decimal(18,4) [not null]
+  ordered_amount decimal(18,2) [not null]
+  remaining_delivery_qty decimal(18,4) [not null]
+  note nvarchar(1000)
+}
+
+Table deliveries {
+  id bigint [pk, increment]
+  order_id bigint [not null, ref: > orders.id]
+  delivery_note_no nvarchar(100) [not null]
+  delivered_on date [not null]
+  delivery_status delivery_status [not null]
+  checked_on date
+  checked_by_user_id bigint [ref: > users.id]
+  invoice_target_month char(7) [note: 'YYYY-MM']
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table delivery_lines {
+  id bigint [pk, increment]
+  delivery_id bigint [not null, ref: > deliveries.id]
+  order_line_id bigint [not null, ref: > order_lines.id]
+  quotation_line_id bigint [not null, ref: > quotation_lines.id]
+  item_type item_type [not null]
+  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  delivered_qty decimal(18,4) [not null]
+  accepted_qty decimal(18,4) [not null]
+  difference_qty decimal(18,4) [not null, default: 0]
+  check_result varchar(30) [not null]
+  note nvarchar(1000)
+}
+
+Table invoices {
+  id bigint [pk, increment]
+  quotation_id bigint [not null, ref: > quotations.id]
+  business_partner_id bigint [not null, ref: > business_partners.id]
+  invoice_no nvarchar(100) [not null]
+  invoiced_on date [not null]
+  total_amount decimal(18,2) [not null]
+  billing_period nvarchar(50)
+  invoice_status invoice_status [not null]
+  note nvarchar(1000)
+  created_at datetime2 [not null]
+  updated_at datetime2 [not null]
+}
+
+Table invoice_targets {
+  id bigint [pk, increment]
+  invoice_id bigint [not null, ref: > invoices.id]
+  delivery_line_id bigint [not null, ref: > delivery_lines.id]
+  invoiced_qty decimal(18,4) [not null]
+  invoiced_amount decimal(18,2) [not null]
+
+  Indexes {
+    (invoice_id, delivery_line_id) [unique]
+  }
+}
+
+Table document_forwardings {
+  id bigint [pk, increment]
+  project_id bigint [not null, ref: > projects.id]
+  document_type document_type [not null]
+  target_record_id bigint [note: 'quotation.id / deliveries.id / invoices.id を想定']
+  forwarded_on date [not null]
+  forwarded_to nvarchar(200)
+  forwarded_by_user_id bigint [ref: > users.id]
+  note nvarchar(1000)
+}
+
+Table attachment_links {
+  id bigint [pk, increment]
+  target_type attachment_target_type [not null]
+  target_record_id bigint [not null]
+  document_type document_type [not null]
+  file_name nvarchar(255) [not null]
+  file_link nvarchar(1000) [not null]
+  created_by_user_id bigint [ref: > users.id]
+  created_at datetime2 [not null]
+  note nvarchar(1000)
+}
