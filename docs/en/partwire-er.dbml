@@ -1,9 +1,9 @@
 Project PartWire {
   database_type: "SQLServer"
   Note: '''
-  PartWire の初期 ER 図たたき台。
-  dbdiagram.io で閲覧、対話しながら更新することを想定する。
-  品目区分 + 品目ID の多態参照は DBML では厳密 FK を張りにくいため Note で補足している。
+  Initial ER draft for PartWire.
+  Intended to be viewed and updated interactively in dbdiagram.io.
+  Polymorphic references using item_type + item_id are annotated with notes because strict foreign keys are difficult to express in DBML.
   '''
 }
 
@@ -121,7 +121,7 @@ Table users {
   department_id bigint [ref: > departments.id]
   role_code varchar(50) [not null]
   approval_rank_id bigint [ref: > approval_ranks.id]
-  ad_key varchar(255) [note: 'AD の UPN を保持する連携キー']
+  ad_key varchar(255) [note: 'Link key that stores the AD UPN']
   is_active bit [not null, default: 1]
   created_at datetime2 [not null]
   updated_at datetime2 [not null]
@@ -149,7 +149,7 @@ Table system_settings {
 
 Table projects {
   id bigint [pk, increment]
-  project_no varchar(11) [not null, unique, note: 'Q + 10桁数値の年度リセットなし通番']
+  project_no varchar(11) [not null, unique, note: 'Sequential number in the format Q + 10 digits, with no annual reset']
   construction_project_id bigint [not null, ref: > construction_projects.id]
   department_id bigint [ref: > departments.id]
   project_name nvarchar(200) [not null]
@@ -214,7 +214,7 @@ Table manufactured_parts {
   size_id bigint [ref: > sizes.id]
   surface_treatment_id bigint [ref: > surface_treatments.id]
   is_active bit [not null, default: 1]
-  note nvarchar(1000) [note: '会社別の追加属性は汎用属性テーブルではなく固定カラム追加方式で拡張する']
+  note nvarchar(1000) [note: 'Company-specific additional attributes are extended through fixed columns rather than a generic attribute table']
   created_at datetime2 [not null]
   updated_at datetime2 [not null]
 }
@@ -238,7 +238,7 @@ Table shapes {
 Table processing_methods {
   id bigint [pk, increment]
   processing_method_code varchar(50) [unique]
-  processing_method_name nvarchar(200) [not null, unique, note: '放電、旋盤、フライス盤、マシニング、6軸、3Dプリンタ、研削 などを想定']
+  processing_method_name nvarchar(200) [not null, unique, note: 'Examples include EDM, lathe, milling, machining center, 6-axis, 3D printer, and grinding']
   is_active bit [not null, default: 1]
   note nvarchar(1000)
 }
@@ -246,7 +246,7 @@ Table processing_methods {
 Table sizes {
   id bigint [pk, increment]
   size_code varchar(50) [unique]
-  size_name nvarchar(200) [not null, unique, note: '300mmまで、1000mmまで などのサイズ帯を想定']
+  size_name nvarchar(200) [not null, unique, note: 'Represents size bands such as up to 300 mm or up to 1000 mm']
   is_active bit [not null, default: 1]
   note nvarchar(1000)
 }
@@ -254,7 +254,7 @@ Table sizes {
 Table surface_treatments {
   id bigint [pk, increment]
   surface_treatment_code varchar(50) [unique]
-  surface_treatment_name nvarchar(200) [not null, unique, note: 'アルマイト、無電解ニッケル等のめっきを想定']
+  surface_treatment_name nvarchar(200) [not null, unique, note: 'Examples include anodizing and electroless nickel plating']
   is_active bit [not null, default: 1]
   note nvarchar(1000)
 }
@@ -323,7 +323,7 @@ Table project_items {
   id bigint [pk, increment]
   project_id bigint [not null, ref: > projects.id]
   item_type item_type [not null]
-  item_id bigint [not null, note: 'item_type=purchase_part のとき purchase_parts.id、manufactured_part のとき manufactured_parts.id']
+  item_id bigint [not null, note: 'References purchase_parts.id when item_type=purchase_part, and manufactured_parts.id when item_type=manufactured_part']
   requested_qty decimal(18,4) [not null]
   unit nvarchar(50)
   usage_text nvarchar(200)
@@ -342,7 +342,7 @@ Table project_items {
 Table price_histories {
   id bigint [pk, increment]
   item_type item_type [not null]
-  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  item_id bigint [not null, note: 'Same polymorphic reference pattern as project_items']
   business_partner_id bigint [not null, ref: > business_partners.id]
   price_category varchar(50) [not null]
   unit_price decimal(18,4) [not null]
@@ -390,15 +390,15 @@ Table quotation_lines {
   quotation_id bigint [not null, ref: > quotations.id]
   project_item_id bigint [not null, ref: > project_items.id]
   item_type item_type [not null]
-  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  item_id bigint [not null, note: 'Same polymorphic reference pattern as project_items']
   quoted_qty decimal(18,4) [not null]
   quoted_unit_price decimal(18,4) [not null]
   quoted_amount decimal(18,2) [not null]
   is_adopted bit [not null, default: 0]
   is_ordered bit [not null, default: 0]
-  delivered_qty decimal(18,4) [not null, default: 0, note: 'delivery_lines.delivered_qty の合計を反映する非正規化カウンター']
-  checked_qty decimal(18,4) [not null, default: 0, note: 'delivery_lines.accepted_qty の合計を反映する非正規化カウンター']
-  invoiced_qty decimal(18,4) [not null, default: 0, note: 'invoice_targets.invoiced_qty の合計を反映する非正規化カウンター']
+  delivered_qty decimal(18,4) [not null, default: 0, note: 'Denormalized counter reflecting the total of delivery_lines.delivered_qty']
+  checked_qty decimal(18,4) [not null, default: 0, note: 'Denormalized counter reflecting the total of delivery_lines.accepted_qty']
+  invoiced_qty decimal(18,4) [not null, default: 0, note: 'Denormalized counter reflecting the total of invoice_targets.invoiced_qty']
   is_completed bit [not null, default: 0]
   note nvarchar(1000)
 }
@@ -411,7 +411,7 @@ Table purchase_approvals {
   department_id bigint [not null, ref: > departments.id]
   amount_rank_id bigint [not null, ref: > amount_ranks.id]
   required_approval_rank_id bigint [not null, ref: > approval_ranks.id]
-  approval_step int [not null, note: '見積書単位の多段階承認における承認段階']
+  approval_step int [not null, note: 'Approval step within multi-step approval for a quotation']
   requested_by_user_id bigint [not null, ref: > users.id]
   approved_by_user_id bigint [ref: > users.id]
   requested_on datetime2 [not null]
@@ -440,11 +440,11 @@ Table orders {
   id bigint [pk, increment]
   quotation_id bigint [not null, ref: > quotations.id]
   business_partner_id bigint [not null, ref: > business_partners.id]
-  order_no varchar(11) [not null, unique, note: 'O + 10桁数値の年度リセットなし通番']
+  order_no varchar(11) [not null, unique, note: 'Sequential number in the format O + 10 digits, with no annual reset']
   ordered_on date [not null]
   total_amount decimal(18,2) [not null]
   planned_delivery_date date
-  order_status order_status [not null, note: 'キャンセル済みデータは通常画面では非表示、履歴画面で参照']
+  order_status order_status [not null, note: 'Cancelled data is hidden from normal screens and shown only in history screens']
   cancelled_on date
   cancel_reason nvarchar(500)
   created_at datetime2 [not null]
@@ -456,11 +456,11 @@ Table order_lines {
   order_id bigint [not null, ref: > orders.id]
   quotation_line_id bigint [not null, ref: > quotation_lines.id]
   item_type item_type [not null]
-  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  item_id bigint [not null, note: 'Same polymorphic reference pattern as project_items']
   ordered_qty decimal(18,4) [not null]
   unit_price decimal(18,4) [not null]
   ordered_amount decimal(18,2) [not null]
-  remaining_delivery_qty decimal(18,4) [not null, note: 'ordered_qty - delivery_lines.delivered_qty 合計を反映する非正規化カウンター']
+  remaining_delivery_qty decimal(18,4) [not null, note: 'Denormalized counter reflecting ordered_qty minus the total of delivery_lines.delivered_qty']
   note nvarchar(1000)
 }
 
@@ -484,7 +484,7 @@ Table delivery_lines {
   order_line_id bigint [not null, ref: > order_lines.id]
   quotation_line_id bigint [not null, ref: > quotation_lines.id]
   item_type item_type [not null]
-  item_id bigint [not null, note: 'project_items と同じ多態参照']
+  item_id bigint [not null, note: 'Same polymorphic reference pattern as project_items']
   delivered_qty decimal(18,4) [not null]
   accepted_qty decimal(18,4) [not null]
   difference_qty decimal(18,4) [not null, default: 0]
@@ -522,7 +522,7 @@ Table document_forwardings {
   id bigint [pk, increment]
   project_id bigint [not null, ref: > projects.id]
   document_type document_type [not null]
-  target_record_id bigint [note: 'quotation.id / deliveries.id / invoices.id を想定']
+  target_record_id bigint [note: 'Assumes quotation.id, deliveries.id, or invoices.id']
   forwarded_on date [not null]
   forwarded_to nvarchar(200)
   forwarded_by_user_id bigint [ref: > users.id]
@@ -535,7 +535,7 @@ Table attachment_links {
   target_record_id bigint [not null]
   document_type document_type [not null]
   file_name nvarchar(255) [not null]
-  file_link nvarchar(1000) [not null, note: '共有フォルダまたは SharePoint のリンク/パスを保持する']
+  file_link nvarchar(1000) [not null, note: 'Stores a shared-folder or SharePoint link/path']
   created_by_user_id bigint [ref: > users.id]
   created_at datetime2 [not null]
   note nvarchar(1000)
@@ -543,7 +543,7 @@ Table attachment_links {
 
 Table notifications {
   id bigint [pk, increment]
-  notification_type varchar(50) [not null, note: 'quote_response_delay / delivery_due_over / document_forward_pending など']
+  notification_type varchar(50) [not null, note: 'Examples include quote_response_delay, delivery_due_over, and document_forward_pending']
   channel_type varchar(20) [not null, note: 'in_app / email']
   related_project_id bigint [ref: > projects.id]
   related_record_type varchar(50)
