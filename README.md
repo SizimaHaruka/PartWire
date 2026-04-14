@@ -1,8 +1,24 @@
 # PartWire
 
-PartWire is a purchase management application for small teams that cannot easily adopt cloud services due to contract approval, security review, or operational constraints.
+PartWire is an application concept for managing procurement work in manufacturing environments, including quotation handling, approvals, ordering, delivery tracking, invoice handling, and document forwarding.
 
-It is designed for departments that still need to manage quotation requests, approvals, orders, deliveries, invoices, and document circulation in one place, using a simple setup that can be operated on their own PCs.
+The requirements and design materials in this repository were written from the perspective of someone who understands real manufacturing purchasing work and is trying to translate that work into a usable system. The underlying ideas come from actual operations, but the contents here have been anonymized and generalized to make them easier to share and discuss.
+
+This repository is not intended to present a textbook-perfect answer. The goal is to make the thought process visible: how complex operational requirements are organized, how exceptions are handled, what should be treated as a management unit, and how those ideas can be turned into a system design.
+
+The target style is something close to cleaned-up internal design material: practical documents that feel grounded in actual work, but are rewritten in a form that can be read and reviewed more clearly from the outside.
+
+Note:
+The author is not a professional software developer and does not claim to know the standard or ideal way such design documentation is usually produced. Because of that, this repository should be read less as a polished final methodology and more as a careful attempt to structure practical business knowledge into a coherent system design.
+
+## Documentation
+
+English documents are the primary reference set for this repository.
+
+- [Requirements](C:/wk/c#/PartWire/docs/en/requirements.md)
+- [Basic Design](C:/wk/c#/PartWire/docs/en/basic-design.md)
+- [Technical Requirements](C:/wk/c#/PartWire/docs/en/technical-requirements.md)
+- [ER Diagram (DBML)](C:/wk/c#/PartWire/docs/en/partwire-er.dbml)
 
 ## Concept
 
@@ -13,7 +29,7 @@ PartWire aims to provide a practical alternative for teams that:
 - want to start with a small local setup and expand only if needed
 - prioritize fast day-to-day processing on Windows PCs
 
-The product is intentionally oriented toward "simple, controllable, and locally operable" procurement management rather than cloud-first operation.
+The product is intentionally oriented toward simple, controllable, locally operable procurement management rather than cloud-first operation.
 
 ## Target Users
 
@@ -28,10 +44,8 @@ PartWire is intended for:
 
 PartWire supports two practical deployment styles:
 
-- Single-PC operation: suitable for small-scale use, verification, or departments that want to start immediately on one operator PC
-- Server DB operation: recommended when the organization already has the environment to host a shared database
-
-In other words, PartWire can be operated on a single PC, but if your environment allows it, building the database on a server is the recommended approach.
+- single-PC operation for small-scale use, verification, or fast local rollout
+- shared database operation for environments that support multi-user use
 
 The intended direction is:
 
