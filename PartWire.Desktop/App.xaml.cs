@@ -16,12 +16,12 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         _host = Host.CreateDefaultBuilder()
-            .ConfigureServices(services =>
+            .ConfigureServices((context, services) =>
             {
-                services.AddInfrastructureServices();
-                services.AddSingleton<GetProjectDetailUseCase>();
-                services.AddSingleton<MainWindowViewModel>();
-                services.AddSingleton<MainWindow>();
+                services.AddInfrastructureServices(context.Configuration);
+                services.AddTransient<GetProjectDetailUseCase>();
+                services.AddTransient<MainWindowViewModel>();
+                services.AddTransient<MainWindow>();
             })
             .Build();
 

@@ -4,6 +4,12 @@ namespace PartWire.Domain.Projects;
 
 public sealed class Project : AuditableEntity
 {
+    private Project()
+    {
+        ProjectNo = string.Empty;
+        ProjectName = string.Empty;
+    }
+
     public string ProjectNo { get; private set; }
 
     public string ProjectName { get; private set; }
